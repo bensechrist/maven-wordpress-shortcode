@@ -27,24 +27,30 @@ function inject_maven_dependency($atts) {
 		return "Artifact ID needed<br />";
 	if (empty($atts['version']))
 		$atts['version'] = "";
+	if (empty($atts['stable']))
+		$atts['stable'] = "false";
 
 	$json_string = file_get_contents("http://search.maven.org/solrsearch/select?q=g:%22" 
 		. $atts['groupid'] . "%22%20AND%20a%3A%22" . $atts['artifactid'] 
 		. "%22%20AND%20v%3A%22" . $atts['version'] . "%22&core=gav&wt=json");
 	$json = json_decode($json_string);
 
-	foreach ($json->response->docs as $result) {
-		if (!empty($first_result->latestVersion)) {
-			if (is_stable($result->latestVersion)) {
-				$first_result = $result;
-				break;
-			}
-		} else {
-			if (is_stable($result->v)) {
-				$first_result = $result;
-				break;
+	if ($atts['stable'] === "true") {
+		foreach ($json->response->docs as $result) {
+			if (!empty($first_result->latestVersion)) {
+				if (is_stable($result->latestVersion)) {
+					$first_result = $result;
+					break;
+				}
+			} else {
+				if (is_stable($result->v)) {
+					$first_result = $result;
+					break;
+				}
 			}
 		}
+	} else {
+		$first_result = $json->response->docs[0];
 	}
 
 	if (empty($first_result))
@@ -74,31 +80,38 @@ function inject_maven_version($atts) {
 		return "Group ID needed<br />";
 	if (empty($atts['artifactid']))
 		return "Artifact ID needed<br />";
+	if (empty($atts['stable']))
+		$atts['stable'] = "false";
 	
 	$json_string = file_get_contents("http://search.maven.org/solrsearch/select?q=g:%22" 
 		. $atts['groupid'] . "%22%20AND%20a%3A%22" . $atts['artifactid'] . "%22&core=gav&wt=json");
 	$json = json_decode($json_string);
-	foreach ($json->response->docs as $result) {
-		if (!empty($first_result->latestVersion)) {
-			if (is_stable($result->latestVersion)) {
-				$first_result = $result;
-				break;
-			}
-		} else {
-			if (is_stable($result->v)) {
-				$first_result = $result;
-				break;
+	
+	if ($atts['stable'] === "true") {
+		foreach ($json->response->docs as $result) {
+			if (!empty($first_result->latestVersion)) {
+				if (is_stable($result->latestVersion)) {
+					$first_result = $result;
+					break;
+				}
+			} else {
+				if (is_stable($result->v)) {
+					$first_result = $result;
+					break;
+				}
 			}
 		}
+	} else {
+		$first_result = $json->response->docs[0];
 	}
 
 	if (empty($first_result))
 		return "Dependency not found<br/>";
 
 	if (!empty($first_result->latestVersion))
-		return $first_result->latestVersion;
+		return $first_result->latestVersion . "<br />";
 	else
-		return $first_result->v;
+		return $first_result->v . "<br />";
 }
 
 add_shortcode('mvn-version', 'inject_maven_version');
