@@ -11,6 +11,15 @@
 
 defined('ABSPATH') or die("No script kiddies please!");
 
+function contains($str, array $arr) {
+  foreach($arr as $a) {
+  	if (stripos($str,$a) !== false) return true;
+  }
+  return false;
+}
+
+$not_stable = array("beta", "alpha");
+
 function inject_maven_dependency($atts) {
 	if (empty($atts['groupid']))
 		return "Group ID needed<br />";
@@ -23,6 +32,15 @@ function inject_maven_dependency($atts) {
 		. $atts['groupid'] . "%22%20AND%20a%3A%22" . $atts['artifactid'] 
 		. "%22%20AND%20v%3A%22" . $atts['version'] . "%22&rows=1&wt=json");
 	$json = json_decode($json_string);
+
+	foreach ($json->response->docs as $result) {
+		if (contains($result, $not_stable))
+			continue;
+
+		$first_result = $result;
+		break;
+	}
+
 	$first_result = $json->response->docs[0];
 
 	$output = "&lt;dependency&gt;<br />";
