@@ -11,14 +11,14 @@
 
 defined('ABSPATH') or die("No script kiddies please!");
 
-function contains($str, array $arr) {
-  foreach($arr as $a) {
-  	if (stripos($str,$a) !== false) return true;
+function is_stable($str) {
+	$not_stable = array("beta", "alpha");
+  foreach($not_stable as $a) {
+  	// echo "stripos(" . $str . ", " . $a . ");";
+  	if (!(stripos($str,$a) === false)) return false;
   }
-  return false;
+  return true;
 }
-
-$not_stable = array("beta", "alpha");
 
 function inject_maven_dependency($atts) {
 	if (empty($atts['groupid']))
@@ -30,18 +30,25 @@ function inject_maven_dependency($atts) {
 
 	$json_string = file_get_contents("http://search.maven.org/solrsearch/select?q=g:%22" 
 		. $atts['groupid'] . "%22%20AND%20a%3A%22" . $atts['artifactid'] 
-		. "%22%20AND%20v%3A%22" . $atts['version'] . "%22&rows=1&wt=json");
+		. "%22%20AND%20v%3A%22" . $atts['version'] . "%22&core=gav&wt=json");
 	$json = json_decode($json_string);
 
 	foreach ($json->response->docs as $result) {
-		if (contains($result, $not_stable))
-			continue;
-
-		$first_result = $result;
-		break;
+		if (!empty($first_result->latestVersion)) {
+			if (is_stable($result->latestVersion)) {
+				$first_result = $result;
+				break;
+			}
+		} else {
+			if (is_stable($result->v)) {
+				$first_result = $result;
+				break;
+			}
+		}
 	}
 
-	$first_result = $json->response->docs[0];
+	if (empty($first_result))
+		return "Dependency not found<br/>";
 
 	$output = "&lt;dependency&gt;<br />";
 	$output .= "&nbsp;&nbsp;&lt;groupId&gt;" . $first_result->g 
@@ -63,12 +70,35 @@ function inject_maven_dependency($atts) {
 add_shortcode('mvn-dependency', 'inject_maven_dependency');
 
 function inject_maven_version($atts) {
+	if (empty($atts['groupid']))
+		return "Group ID needed<br />";
+	if (empty($atts['artifactid']))
+		return "Artifact ID needed<br />";
+	
 	$json_string = file_get_contents("http://search.maven.org/solrsearch/select?q=g:%22" 
-		. $atts['groupid'] . "%22%20AND%20a%3A%22" . $atts['artifactid'] . "%22&rows=1&wt=json");
+		. $atts['groupid'] . "%22%20AND%20a%3A%22" . $atts['artifactid'] . "%22&core=gav&wt=json");
 	$json = json_decode($json_string);
-	$first_result = $json->response->docs[0];
+	foreach ($json->response->docs as $result) {
+		if (!empty($first_result->latestVersion)) {
+			if (is_stable($result->latestVersion)) {
+				$first_result = $result;
+				break;
+			}
+		} else {
+			if (is_stable($result->v)) {
+				$first_result = $result;
+				break;
+			}
+		}
+	}
 
-	return $first_result->latestVersion;
+	if (empty($first_result))
+		return "Dependency not found<br/>";
+
+	if (!empty($first_result->latestVersion))
+		return $first_result->latestVersion;
+	else
+		return $first_result->v;
 }
 
 add_shortcode('mvn-version', 'inject_maven_version');
