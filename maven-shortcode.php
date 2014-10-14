@@ -109,9 +109,9 @@ function inject_maven_version($atts) {
 		return "Dependency not found<br/>";
 
 	if (!empty($first_result->latestVersion))
-		return $first_result->latestVersion . "<br />";
+		return $first_result->latestVersion . "<br /><br />";
 	else
-		return $first_result->v . "<br />";
+		return $first_result->v . "<br /><br />";
 }
 
 add_shortcode('mvn-version', 'inject_maven_version');
